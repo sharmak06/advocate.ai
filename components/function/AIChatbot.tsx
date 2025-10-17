@@ -16,7 +16,6 @@ import { Send, Bot, User, Scale } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/layout/Navbar";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface Message {
   id: string;
@@ -151,14 +150,13 @@ const AIChatbot = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = inputMessage; // Capture the input before clearing it
     setInputMessage("");
     setIsLoading(true);
 
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-      const legalContext = `You are a knowledgeable legal AI assistant specializing in Indian law and general legal principles. 
+    // This is the prompt you were using before.
+    // We send it to the backend so the server can build the full prompt.
+    const legalContext = `You are a knowledgeable legal AI assistant specializing in Indian law and general legal principles. 
       You provide helpful, accurate, and professional legal guidance while always reminding users that your advice does not constitute formal legal counsel and they should consult with a qualified lawyer for specific legal matters.
       
       Focus on:
@@ -173,12 +171,30 @@ const AIChatbot = () => {
       Format your responses using markdown when appropriate:
       - Use **text** for important points or headings
       - Use *text* for emphasis
-      - Use line breaks for better readability
-      
-      User question: ${inputMessage}`;
-      const result = await model.generateContent(legalContext);
-      const response = result.response;
-      const text = response.text();
+      - Use line breaks for better readability`;
+
+    try {
+      // Call your OWN backend API route
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: currentInput, // Send the user's message
+          legalContext: legalContext, // Send the system prompt
+          apiKey: apiKey, // Send the user's API key
+        }),
+      });
+
+      if (!response.ok) {
+        // Handle errors from your own API route
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to get response from AI.");
+      }
+
+      const data = await response.json();
+      const text = data.text; // Get the text from the JSON response
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -188,12 +204,11 @@ const AIChatbot = () => {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      //console.error("Error calling Gemini API:", error);
+    } catch (error: any) {
+      console.error("Error calling /api/chat:", error);
       toast({
         title: "Error",
-        description:
-          "Failed to get response from AI. Please check your API key and try again.",
+        description: error.message || "Failed to get response. Please check your API key and try again.",
         variant: "destructive",
       });
 
@@ -306,9 +321,6 @@ const AIChatbot = () => {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleApiKeySubmit()}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" && handleApiKeySubmit()
-                    }
                   />
                   <Button onClick={handleApiKeySubmit} className="w-full cursor-pointer">
                     Save API Key & Start Chatting
@@ -412,7 +424,6 @@ const AIChatbot = () => {
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyDown={handleKeyPress}
-                      onKeyPress={handleKeyPress}
                       placeholder="Ask me anything about legal matters..."
                       disabled={isLoading}
                       className="flex-1 mx-2"

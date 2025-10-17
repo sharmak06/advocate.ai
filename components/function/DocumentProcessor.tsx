@@ -97,8 +97,9 @@ const DocumentProcessor = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  // API key is provided server-side via GEMINI_API_KEY; hide client input
   const [apiKey, setApiKey] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   // Document Generation Form
   const [docType, setDocType] = useState("");
@@ -145,17 +146,6 @@ const DocumentProcessor = () => {
       if (!session) {
         router.push("/auth");
         return;
-      }
-
-      // Check for stored API key
-      try {
-        const storedApiKey = localStorage.getItem("gemini_api_key");
-        if (storedApiKey) {
-          setApiKey(storedApiKey);
-          setShowApiKeyInput(false);
-        }
-      } catch (error) {
-        //console.error("Error checking stored API key:", error);
       }
     };
 
@@ -233,9 +223,8 @@ const DocumentProcessor = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          fileContent,
-          fileName,
-          apiKey,
+        fileContent,
+        fileName,
         }),
       });
 
@@ -247,22 +236,16 @@ const DocumentProcessor = () => {
         throw new Error(data.error || "Analysis failed");
       }
     } catch (error) {
-      //console.error("Analysis error:", error);
-      return null;
+      console.error("Analysis API Error:", error);
+      // Rethrow so caller can surface the error message
+      throw error;
     }
   };
 
   // Analysis Dropzone
   const onDropAnalyze = useCallback(
     async (acceptedFiles: File[]) => {
-      if (!apiKey) {
-        toast({
-          title: "API Key Required",
-          description: "Please set your Gemini API key first.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Server provides GEMINI_API_KEY; no client-side key required
 
       setIsAnalyzing(true);
 
@@ -316,9 +299,10 @@ const DocumentProcessor = () => {
             )
           );
 
+          const msg = (error as any)?.message || "Failed to analyze document. Please try again.";
           toast({
             title: "Analysis Failed",
-            description: `Failed to analyze ${file.name}. Please try again.`,
+            description: `${file.name}: ${msg}`,
             variant: "destructive",
           });
         }
@@ -332,14 +316,7 @@ const DocumentProcessor = () => {
   // Translation Dropzone
   const onDropTranslate = useCallback(
     async (acceptedFiles: File[]) => {
-      if (!apiKey) {
-        toast({
-          title: "API Key Required",
-          description: "Please set your Gemini API key first.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Server provides GEMINI_API_KEY; no client-side key required
 
       if (!targetLanguage) {
         toast({
@@ -376,10 +353,9 @@ const DocumentProcessor = () => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              fileContent,
-              fileName: file.name,
-              targetLanguage,
-              apiKey,
+          fileContent,
+          fileName: file.name,
+          targetLanguage,
             }),
           });
 
@@ -454,14 +430,7 @@ const DocumentProcessor = () => {
   });
 
   const generateDocument = async () => {
-    if (!apiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please set your Gemini API key first.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Server provides GEMINI_API_KEY; no client-side key required
 
     if (!docType || !docTitle || !docDescription) {
       toast({
@@ -496,7 +465,7 @@ const DocumentProcessor = () => {
           type: docType,
           title: docTitle,
           description: docDescription,
-          apiKey,
+          
         }),
       });
 
