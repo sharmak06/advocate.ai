@@ -27,8 +27,8 @@ interface Session {
 interface AuthContextType {
     session: Session | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    register: (data: any) => Promise<{ success: boolean; error?: string }>;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string; session?: Session }>;
+    register: (data: any) => Promise<{ success: boolean; error?: string; session?: Session }>;
     logout: () => Promise<void>;
 }
 
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (data.session) {
                 // console.log('🎉 Login successful, setting session');
                 setSession(data.session);
-                return { success: true };
+                return { success: true, session: data.session };
             } else {
                 return { success: false, error: data.error || 'Login failed' };
             }
@@ -167,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (data.session) {
                 // console.log('🎉 Registration successful, setting session');
                 setSession(data.session);
-                return { success: true };
+                return { success: true, session: data.session };
             } else {
                 return { success: false, error: data.error || 'Registration failed' };
             }

@@ -100,8 +100,10 @@ const AuthForm = () => {
 
         setRedirecting(true);
 
-        // If VKYC is not completed, send the user to VKYC flow instead.
-        if (session?.user && session.user.vkyc_completed === false) {
+        // Use the session returned from the login call (if provided) to decide redirect.
+        const returnedSession = (result as any).session as typeof session | undefined;
+
+        if (returnedSession?.user && returnedSession.user.vkyc_completed === false) {
           router.push("/vkyc");
         } else {
           router.push(callbackUrl);
