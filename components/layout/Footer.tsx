@@ -9,7 +9,7 @@ const Footer = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex flex-col items-center text-center">
             <div className="text-sm text-muted-foreground">
-              © 2025 Vidhika. All rights reserved.
+              © 2025 Adhikaar.AI. All rights reserved.
             </div>
           </div>
         </div>
