@@ -38,6 +38,8 @@ const LegalLibrary = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   const categories = [
@@ -72,11 +74,12 @@ const LegalLibrary = () => {
         params.append("search", searchQuery.trim());
       }
 
-      const response = await fetch(`/api/reports?${params}`);
+  const response = await fetch(`/api/library/list?${params}`);
 
       if (response.ok) {
         const data = await response.json();
-        setDocuments(data.reports || []);
+        // API returns { documents: [...] }
+        setDocuments(data.documents || []);
       } else {
         // Handle error response gracefully
         //console.warn("API returned error status:", response.status);
@@ -103,6 +106,38 @@ const LegalLibrary = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSelectedFile(file);
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', selectedFile);
+
+      const res = await fetch('/api/library/upload', {
+        method: 'POST',
+        body: fd,
+      });
+
+      if (res.ok) {
+        toast({ title: 'Upload complete', description: selectedFile.name });
+        setSelectedFile(null);
+        fetchDocuments();
+      } else {
+        const data = await res.json();
+        toast({ title: 'Upload failed', description: data.error || 'Unknown error', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Upload failed', description: 'Network error', variant: 'destructive' });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -197,6 +232,22 @@ const LegalLibrary = () => {
                       </option>
                     ))}
                   </select>
+                  <div className="ml-4 flex items-center space-x-2">
+                    <input
+                      id="pdfUpload"
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleFileChange}
+                      className="text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleUpload}
+                      disabled={!selectedFile || uploading}
+                    >
+                      {uploading ? 'Uploading...' : 'Upload PDF'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
