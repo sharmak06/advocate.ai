@@ -23,6 +23,7 @@ import {
 import { Eye, EyeOff, Scale } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "next/navigation";
 
 const AuthForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -39,6 +40,7 @@ const AuthForm = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { session, loading, login, register } = useAuth();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!loading && session?.user) {
@@ -90,6 +92,20 @@ const AuthForm = () => {
           title: "Welcome back!",
           description: "Signed in successfully!",
         });
+        // Redirect after successful login. Prefer a callback/next URL if present.
+        const callbackUrl =
+          (searchParams?.get("callbackUrl") as string) ||
+          (searchParams?.get("next") as string) ||
+          "/";
+
+        setRedirecting(true);
+
+        // If VKYC is not completed, send the user to VKYC flow instead.
+        if (session?.user && session.user.vkyc_completed === false) {
+          router.push("/vkyc");
+        } else {
+          router.push(callbackUrl);
+        }
       }
     } catch (error) {
       //console.error("Unexpected sign-in error:", error);
