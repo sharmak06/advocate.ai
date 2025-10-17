@@ -1,12 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as pdfjsLib from 'pdfjs-dist';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Set worker source
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Minimal DOMMatrix polyfill for Node environments. pdfjs uses DOMMatrix
+// heavily; providing a small compatible implementation prevents runtime
+// ReferenceError during server-side builds.
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  // @ts-ignore
+  globalThis.DOMMatrix = class DOMMatrix {
+    a: number;
+    b: number;
+    c: number;
+    d: number;
+    e: number;
+    f: number;
+
+    constructor(init?: any) {
+      if (Array.isArray(init)) {
+        [this.a, this.b, this.c, this.d, this.e, this.f] = [init[0] ?? 1, init[1] ?? 0, init[2] ?? 0, init[3] ?? 1, init[4] ?? 0, init[5] ?? 0];
+      } else if (init && typeof init === 'object') {
+        this.a = init.a ?? 1;
+        this.b = init.b ?? 0;
+        this.c = init.c ?? 0;
+        this.d = init.d ?? 1;
+        this.e = init.e ?? 0;
+        this.f = init.f ?? 0;
+      } else {
+        this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0;
+      }
+    }
+
+    multiplySelf(other: any) {
+      const a = this.a * other.a + this.c * other.b;
+      const b = this.b * other.a + this.d * other.b;
+      const c = this.a * other.c + this.c * other.d;
+      const d = this.b * other.c + this.d * other.d;
+      const e = this.a * other.e + this.c * other.f + this.e;
+      const f = this.b * other.e + this.d * other.f + this.f;
+      this.a = a; this.b = b; this.c = c; this.d = d; this.e = e; this.f = f;
+      return this;
+    }
+
+    preMultiplySelf(other: any) {
+      const a = other.a * this.a + other.c * this.b;
+      const b = other.b * this.a + other.d * this.b;
+      const c = other.a * this.c + other.c * this.d;
+      const d = other.b * this.c + other.d * this.d;
+      const e = other.a * this.e + other.c * this.f + other.e;
+      const f = other.b * this.e + other.d * this.f + other.f;
+      this.a = a; this.b = b; this.c = c; this.d = d; this.e = e; this.f = f;
+      return this;
+    }
+
+    invertSelf() {
+      const det = this.a * this.d - this.b * this.c;
+      if (!det || det === 0) {
+        // return identity to avoid throwing during build-time operations
+        this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0;
+        return this;
+      }
+      const a = this.d / det;
+      const b = -this.b / det;
+      const c = -this.c / det;
+      const d = this.a / det;
+      const e = (this.c * this.f - this.d * this.e) / det;
+      const f = (this.b * this.e - this.a * this.f) / det;
+      this.a = a; this.b = b; this.c = c; this.d = d; this.e = e; this.f = f;
+      return this;
+    }
+
+    translate(tx: number, ty: number) {
+      return this.multiplySelf(new (globalThis as any).DOMMatrix([1, 0, 0, 1, tx, ty]));
+    }
+
+    scale(sx: number, sy?: number) {
+      if (sy === undefined) sy = sx;
+      return this.multiplySelf(new (globalThis as any).DOMMatrix([sx, 0, 0, sy, 0, 0]));
+    }
+
+    // convenience aliases used in some code paths
+    multiply(other: any) { return this.multiplySelf(other); }
+    toString() { return `matrix(${this.a},${this.b},${this.c},${this.d},${this.e},${this.f})`; }
+  };
+}
 
 async function extractTextFromPDF(base64Content: string): Promise<string> {
   try {
+    // load pdfjs dynamically after DOM polyfills are in place
+    const pdfjsLib: any = await import('pdfjs-dist/legacy/build/pdf');
+
+    // Set worker source (CDN) when available
+    try {
+      // some builds expose version
+      // @ts-ignore
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '2.16.105'}/pdf.worker.min.js`;
+    } catch (e) {
+      // ignore worker configuration errors on server
+    }
+
     const binaryString = Buffer.from(base64Content, 'base64');
     const bytes = new Uint8Array(binaryString);
 
