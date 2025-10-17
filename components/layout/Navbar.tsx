@@ -126,9 +126,10 @@ const Navbar = () => {
           <div className="hidden md:block">
             <div className="flex items-baseline space-x-6">
               {filteredNavItems.map((item) => (
-                <Link
+                <button
                   key={item.name}
-                  href={item.href}
+                  type="button"
+                  onClick={() => router.push(item.href)}
                   className={`flex items-center space-x-1 px-3 py-2 text-sm font-medium transition-colors duration-200
                     ${
                       pathname === item.href
@@ -139,7 +140,7 @@ const Navbar = () => {
                 >
                   {item.icon}
                   <span>{item.name}</span>
-                </Link>
+                </button>
               ))}
             </div>
           </div>
@@ -182,22 +183,18 @@ const Navbar = () => {
             ) : (
               <>
                 <Button
-                  asChild
                   variant="ghost"
                   className="flex items-center space-x-1 rounded-none px-3 py-2 text-sm font-medium transition-colors duration-200"
+                  onClick={() => router.push('/auth')}
                 >
-                  <Link href="/auth">
-                    <span>Sign In</span>
-                  </Link>
+                  <span>Sign In</span>
                 </Button>
                 <Button
-                  asChild
                   className="px-6 py-2 rounded-none text-sm font-medium transition-all duration-200 transform hover:scale-105"
+                  onClick={() => router.push('/auth')}
                 >
-                  <Link href="/auth">
-                    Get Started
-                    <ArrowRight />
-                  </Link>
+                  Get Started
+                  <ArrowRight />
                 </Button>
               </>
             )}
@@ -222,15 +219,18 @@ const Navbar = () => {
         <div className="md:hidden border-t">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {filteredNavItems.map((item) => (
-              <Link
+              <button
                 key={item.name}
-                href={item.href}
+                type="button"
+                onClick={() => {
+                  router.push(item.href);
+                  setIsMenuOpen(false);
+                }}
                 className="flex items-center space-x-2 text-slate-600 hover:text-sky-500 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
-                onClick={() => setIsMenuOpen(false)}
               >
                 {item.icon}
                 <span>{item.name}</span>
-              </Link>
+              </button>
             ))}
             <div className="pt-4 pb-2 border-t mt-4">
               {session ? (
