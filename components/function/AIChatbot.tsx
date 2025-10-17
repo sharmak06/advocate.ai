@@ -51,7 +51,6 @@ const AIChatbot = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -89,18 +88,18 @@ const AIChatbot = () => {
         const storedApiKey = localStorage.getItem("gemini_api_key");
         if (storedApiKey) {
           setApiKey(storedApiKey);
-          setShowApiKeyInput(false);
-
-          setMessages([
-            {
-              id: "1",
-              role: "assistant",
-              content:
-                "Welcome to the **Legal AI Assistant**! I'm here to help you with legal questions, document review, legal research, and general legal guidance. How can I assist you today?",
-              timestamp: new Date(),
-            },
-          ]);
         }
+
+        // Always show welcome message
+        setMessages([
+          {
+            id: "1",
+            role: "assistant",
+            content:
+              "Welcome to the **Legal AI Assistant**! I'm here to help you with legal questions, document review, legal research, and general legal guidance. How can I assist you today?",
+            timestamp: new Date(),
+          },
+        ]);
       } catch (error) {
         //console.error("Auth check error:", error);
         router.push("/auth");
@@ -111,32 +110,7 @@ const AIChatbot = () => {
   }, [session, authLoading, router]);
 
   const handleApiKeySubmit = () => {
-    if (!apiKey.trim()) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your Gemini API key to continue.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    localStorage.setItem("gemini_api_key", apiKey);
-    setShowApiKeyInput(false);
-
-    setMessages([
-      {
-        id: "1",
-        role: "assistant",
-        content:
-          "Welcome to the **Legal AI Assistant**! I'm here to help you with legal questions, document review, legal research, and general legal guidance. How can I assist you today?",
-        timestamp: new Date(),
-      },
-    ]);
-
-    toast({
-      title: "API Key Saved",
-      description: "You can now start chatting with the legal AI assistant!",
-    });
+    // Deprecated: client-side API key entry removed. The server will use the configured GEMINI_API_KEY.
   };
 
   const sendMessage = async () => {
@@ -181,10 +155,9 @@ const AIChatbot = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: currentInput, // Send the user's message
-          legalContext: legalContext, // Send the system prompt
-          apiKey: apiKey, // Send the user's API key
-        }),
+            message: currentInput, // Send the user's message
+            legalContext: legalContext, // Send the system prompt
+          }),
       });
 
       if (!response.ok) {
@@ -246,10 +219,7 @@ const AIChatbot = () => {
   };
 
   const resetApiKey = () => {
-    localStorage.removeItem("gemini_api_key");
-    setApiKey("");
-    setShowApiKeyInput(true);
-    setMessages([]);
+    // Deprecated: client-side API key reset removed.
   };
 
   if (authLoading) {
@@ -293,53 +263,9 @@ const AIChatbot = () => {
                 >
                   Clear Chat
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="truncate min-w-0 flex-1 py-4 h-7 cursor-pointer"
-                  onClick={resetApiKey}
-                >
-                  Reset API Key
-                </Button>
               </div>
             </CardHeader>
-
-            {showApiKeyInput ? (
-              <CardContent className="flex flex-col items-center justify-center h-full space-y-4">
-                <div className="text-center space-y-2">
-                  <Bot className="w-16 h-16 mx-auto text-background" />
-                  <h3 className="text-lg font-semibold">Setup Required</h3>
-                  <p className="max-w-md text-sm text-muted-foreground">
-                    To use the AI legal assistant, please enter your Google
-                    Gemini API key.Key will be stored locally and never shared.
-                  </p>
-                </div>
-                <div className="w-full max-w-md space-y-3">
-                  <Input
-                    type="password"
-                    placeholder="Enter your Gemini API key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleApiKeySubmit()}
-                  />
-                  <Button onClick={handleApiKeySubmit} className="w-full cursor-pointer">
-                    Save API Key & Start Chatting
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Get your free API key from{" "}
-                    <a
-                      href="https://makersuite.google.com/app/apikey"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      Google AI Studio
-                    </a>
-                  </p>
-                </div>
-              </CardContent>
-            ) : (
-              <>
+            <>
                 <CardContent className="flex-1 p-0 overflow-hidden">
                   <ScrollArea
                     className="h-full px-3 sm:px-6"
@@ -443,7 +369,6 @@ const AIChatbot = () => {
                   </p>
                 </div>
               </>
-            )}
           </Card>
         </div>
       </div>
